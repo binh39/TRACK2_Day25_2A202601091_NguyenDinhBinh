@@ -1,102 +1,102 @@
-# NimbusAI — GPU Cost Optimization Report
+# NimbusAI — Báo cáo Tối ưu hóa Chi phí GPU (GPU Cost Optimization Report)
 
-**Period:** monthly  
-**Baseline spend:** $27,133  
-**Optimized spend:** $14,626  
-**Projected savings:** $12,507  (**46%**)
+**Kỳ báo cáo (Period):** hàng tháng (monthly)  
+**Chi phí cơ sở (Baseline spend):** $27,133  
+**Chi phí sau tối ưu (Optimized spend):** $14,626  
+**Dự kiến tiết kiệm (Projected savings):** $12,507  (**46%**)
 
-## Executive Summary
+## 1. Tóm tắt Điều hành (Executive Summary)
 
-Through a comprehensive 5-phase FinOps audit across model inference, instance purchasing commitments, utilization efficiency, and idle capacity management, NimbusAI can reduce its monthly GPU spend from **$27,133** to **$14,626**, achieving **$12,507/month in net savings (46.1% reduction)**.
+Thông qua quá trình kiểm toán FinOps toàn diện 5 giai đoạn bao gồm tối ưu hóa suy luận (inference), cam kết mua sắm (purchasing), hiệu quả tính toán thực tế (MFU/MBU) và triệt tiêu lãng phí chạy không (idle waste), NimbusAI có thể cắt giảm chi phí GPU hàng tháng từ **$27,133** xuống còn **$14,626**, mang lại khoản tiết kiệm ròng **$12,507/tháng (giảm 46.1%)**.
 
-## Savings by lever
+## 2. Tiết kiệm theo Đòn bẩy FinOps (Savings by lever)
 
-| Lever | Savings (USD) | Share of Savings (%) |
+| Đòn bẩy (Lever) | Tiết kiệm (USD) | Tỷ trọng tiết kiệm (%) |
 |---|---|---|
 | Inference (cascade/cache/batch) | $1,212 | 9.7% |
 | Purchasing (spot/reserved) | $10,040 | 80.3% |
 | Right-size util-lies | $655 | 5.2% |
 | Kill idle GPUs | $600 | 4.8% |
 
-## Root-Cause Analysis: The 'GPU-Util Lie'
+## 3. Phân tích Nguyên nhân Gốc rễ: Cú lừa GPU-Util ("GPU-Util Lie")
 
-- **What is the Lie?** Telemetry metrics such as `nvidia-smi` GPU-Util measure the percentage of time that the GPU compute engines / SM clocks are non-idle. They do **not** measure computational throughput, arithmetic intensity, or tensor core utilization (MFU).
-- **Why does it happen?** A GPU running memory-bound operations (e.g. LLM decode with small batch size) or waiting on memory bandwidth / kernel launch synchronization can show **98% GPU-Util** while its Model FLOPs Utilization (MFU) is merely **19-20%**.
-- **Financial Impact:** The organization pays 100% of the premium hourly rate (e.g. $2.50/hr for H100) while obtaining only ~1/5th of the hardware's computational capacity. Right-sizing or disaggregating prefill/decode resolves this waste immediately.
+- **Bản chất của "Lie":** Các chỉ số đo lường từ `nvidia-smi` như `GPU-Util %` chỉ đo tỷ lệ thời gian mà xung nhịp xử lý (SM clock) ở trạng thái bận (active), **hoàn toàn không phản ánh** thông lượng tính toán hữu ích, cường độ số học hay hiệu suất Tensor Core (MFU).
+- **Nguyên nhân kỹ thuật:** Các tác vụ suy luận bị nghẽn băng thông bộ nhớ (Memory-bound autoregressive decoding với batch size nhỏ) hoặc chờ đợi nạp trọng số từ HBM sang SRAM khiến SM luôn trong trạng thái chờ (stall). Khi đó `GPU-Util` báo **98%** nhưng `MFU` thực tế chỉ đạt **19-20%**.
+- **Tác động tài chính:** NimbusAI phải trả 100% đơn giá thuê GPU đắt đỏ ($2.50/giờ cho H100) nhưng chỉ nhận lại ~1/5 năng lực tính toán phần cứng. Việc right-sizing sang A100/A10G hoặc tách biệt prefill/decode sẽ loại bỏ ngay khoản lãng phí này.
 
-## Prioritized Action Plan (Ranked by ROI)
+## 4. Kế hoạch Hành động Ưu tiên theo ROI (Prioritized Action Plan)
 
-1. **Phase 1 (Immediate — Day 1, Zero Risk): Kill Idle overnight GPUs & sandbox instances**
-   - *Action:* Configure auto-reaper and event-driven scale-to-zero for development/eval instances.
-   - *Impact:* Saves ~$600/month with zero impact on production latency.
-2. **Phase 2 (Fast ROI — Week 1): Inference Optimizations (Cascading, Prompt Caching, Batch API)**
-   - *Action:* Route simple queries (80% volume) to small model tier ($0.20/$0.40 per 1M tokens), enable prompt caching for static system prompts (90% read discount), and offload asynchronous evaluation jobs to Batch API (-50% discount).
-   - *Impact:* Saves ~$1,212/month.
-3. **Phase 3 (Strategic Purchasing — Week 2): Spot with Checkpointing & 3-Year Reserved Commitments**
-   - *Action:* Move fault-tolerant batch training jobs to Spot instances with automated checkpointing; secure 3-Year Reserved instances for predictable 24/7 inference baselines.
-   - *Impact:* Largest dollar savings lever (~$10,040/month).
-4. **Phase 4 (Hardware Governance — Month 1): Right-Size Memory-Bound GPUs**
-   - *Action:* Migrate memory-bound inference workloads from H100 down to A100 / A10G / L4 based on VRAM footprint and memory bandwidth.
-   - *Impact:* Saves ~$655/month.
+1. **Giai đoạn 1 (Ngay lập tức — Day 1, Không rủi ro): Hủy bỏ GPU chạy không qua đêm & sandbox**
+   - *Hành động:* Cấu hình auto-reaper và cơ chế scale-to-zero tự động cho các instance thử nghiệm, eval và phát triển sau giờ làm việc.
+   - *Tác động:* Tiết kiệm ngay ~$600/tháng mà không ảnh hưởng tới người dùng.
+2. **Giai đoạn 2 (Thu hồi vốn nhanh — Tuần 1): Tối ưu hóa Suy luận (Cascading, Prompt Caching, Batch API)**
+   - *Hành động:* Định tuyến 80% truy vấn đơn giản sang model nhỏ ($0.20/$0.40 trên 1M token), kích hoạt Prompt Caching cho system prompt tĩnh (chiết khấu 90% khi đọc) và gom lô batch cho các tác vụ eval (-50% giá).
+   - *Tác động:* Tiết kiệm ~$1,212/tháng.
+3. **Giai đoạn 3 (Mua sắm Chiến lược — Tuần 2): Kết hợp Spot + Checkpointing và Cam kết Reserved 3-Năm**
+   - *Hành động:* Chuyển các job training chịu lỗi sang Spot instances kèm checkpoint định kỳ; ký cam kết Reserved 3-Year cho cụm phục vụ inference 24/7.
+   - *Tác động:* Đòn bẩy tiết kiệm lớn nhất (~$10,040/tháng).
+4. **Giai đoạn 4 (Chuẩn hóa Phần cứng — Tháng 1): Right-Size GPU theo VRAM & Băng thông MBU**
+   - *Hành động:* Di chuyển các workload suy luận memory-bound từ H100 xuống A100 / A10G / L4 phù hợp với dung lượng VRAM thực tế.
+   - *Tác động:* Tiết kiệm ~$655/tháng.
 
-## Sustainability
+## 5. Tính Bền vững & Năng lượng (Sustainability)
 
-- Energy per query: 0.24 Wh
-- Carbon per query: 0.091 gCO2e
-- Cheapest+cleanest region: europe-north1
+- **Năng lượng tiêu thụ mỗi truy vấn (Energy per query):** 0.24 Wh
+- **Phát thải carbon mỗi truy vấn (Carbon per query):** 0.091 gCO2e
+- **Vùng rẻ nhất & sạch nhất (Cheapest+cleanest region):** europe-north1
 
-### Carbon & Regional Scheduling Insights
-- **Region Optimization:** Deploying non-urgent batch training jobs in `europe-north1` (Norway hydro, 30 gCO2/kWh) reduces emissions by **92.1%** compared to `us-east-1` (380 gCO2/kWh) while saving on electricity costs.
-- **Reasoning Energy Penalty:** Autoregressive reasoning expansion increases per-query energy consumption by up to **80×**. Implementing complexity-gated dynamic routing prevents unnecessary carbon and dollar expenditure.
+### Đánh giá Phát thải Carbon & Điều phối Đa vùng
+- **Tối ưu hóa Vùng triển khai:** Di chuyển các tác vụ huấn luyện theo lô sang `europe-north1` (Thủy điện Na Uy, 30 gCO2/kWh) giúp giảm **92.1% lượng phát thải carbon** so với `us-east-1` (380 gCO2/kWh) đồng thời giảm chi phí điện.
+- **Chi phí Năng lượng của Reasoning:** Quá trình sinh token suy luận chuỗi dài tự hồi quy làm tăng mức tiêu thụ điện năng lên tới **80×**. Cần áp dụng Dynamic Routing để hạn chế lãng phí năng lượng không cần thiết.
 
-## 'Your Turn' Extensions Implemented (5/5)
-
-
-
-### 1. Extension 1: Multi-Factor Purchasing Tier Matrix
-
-- Implemented `recommend_tier_advanced()` incorporating GPU-specific interruption probabilities (H100 ~3%, A10G ~12%) and project duration horizons.
-
-- Monthly purchasing spend under advanced policy: **$14,758** (42.5% saved vs on-demand).
+## 6. Chi tiết 5 Phần Mở Rộng "Your Turn" Đã Triển Khai (5/5)
 
 
 
-### 2. Extension 2: Right-Sizing by MBU & VRAM Economics
+### 1. Extension 1: Ma trận Quyết định Tier Mua sắm Đa Yếu tố (`recommend_tier_advanced`)
 
-- Analyzed memory bandwidth utilization (MBU) and VRAM costs (`$/GB-VRAM-hr`).
+- Đã xây dựng hàm `recommend_tier_advanced()` tích hợp rủi ro gián đoạn theo từng dòng GPU (H100 ~3%, A10G ~12%) và thời lượng dự án.
 
-- Memory-bound decode workloads are right-sized from H100 down to A100 / A10G, avoiding paying for unused compute FLOPs.
-
-- Fleet-wide monthly right-sizing savings potential: **$2,724.00**.
+- Chi phí mua sắm hàng tháng theo chính sách nâng cao: **$14,758** (tiết kiệm 42.5% so với On-Demand).
 
 
 
-### 3. Extension 3: Economics of Prompt Caching (`cache_is_worth_it`)
+### 2. Extension 2: Right-Sizing theo Hiệu quả Băng thông MBU & Đơn vị VRAM
 
-- Implemented break-even reuse formula: $N_{be} = \frac{P_{write}}{P_{in} \times (1 - \text{read\_discount})}$.
+- Phân tích chỉ số Model Bandwidth Utilization (MBU) và đơn giá VRAM (`$/GB-VRAM-hr`).
 
-- Break-even threshold for small model: **1.11 reads**.
+- Các workload suy luận memory-bound được chuyển đổi chính xác từ H100 sang A100 / A10G, tránh lãng phí FLOPs tính toán không dùng đến.
 
-- With dataset average prefix reads of ~5.0, prompt caching is active and highly profitable.
-
-
-
-### 4. Extension 4: Reasoning Budget Analysis & Routing
-
-- Reasoning traffic represents **8.4%** of requests, but drives **16.5%** of inference cost and **94.0%** of energy consumption due to autoregressive chain-of-thought token expansion (~80× energy multiplier).
-
-- Capping reasoning traffic with complexity threshold routing yields **$20.95/month** in financial savings and **446.8 kWh/month** in energy reduction.
+- Tiềm năng tiết kiệm Right-sizing trên toàn cụm GPU: **$2,724.00/tháng**.
 
 
 
-### 5. Extension 5: Carbon-Aware Multi-Region Scheduling
+### 3. Extension 3: Kinh tế học của Prompt Caching (`cache_is_worth_it`)
 
-- Evaluated 5 cloud regions for 4,227 kWh/month of interruptible training workloads.
+- Thiết lập công thức điểm hòa vốn: $N_{be} = \frac{P_{write}}{P_{in} \times (1 - \text{read\_discount})}$.
 
-- **Cleanest region:** `europe-north1` (cuts carbon emissions by 92.1%).
+- Ngưỡng hòa vốn cho model nhỏ: **1.11 lần đọc**.
 
-- **Cheapest power region:** `us-east-wa` (cuts electricity power bill by 54.2%).
+- Với số lần tái sử dụng tiền tố trung bình đạt ~5.0 lần trong dữ liệu, Prompt Caching đem lại hiệu quả tài chính vượt trội.
 
-- **Trade-off Analysis:** Non-real-time batch training has zero latency impact on interactive users, allowing flexible global scheduling.
 
-_Figures are June-2026 as-of snapshots; re-baseline before acting._
+
+### 4. Extension 4: Phân tích Ngân sách & Định tuyến Suy luận (Reasoning Budget)
+
+- Lưu lượng Reasoning chiếm **8.4%** tổng truy vấn, nhưng ngốn **16.5%** chi phí suy luận và **94.0%** tổng điện năng do quá trình sinh chuỗi suy nghĩ tự hồi quy (~80× năng lượng).
+
+- Áp dụng bộ lọc định tuyến phân loại độ phức tạp giúp tiết kiệm thêm **$20.95/tháng** và giảm **446.8 kWh/tháng**.
+
+
+
+### 5. Extension 5: Lịch trình Nhận thức Carbon & Chi phí Đa vùng (Carbon-Aware Scheduling)
+
+- Đánh giá 5 vùng cloud cho 4,227 kWh/tháng workload huấn luyện có thể gián đoạn.
+
+- **Vùng sạch nhất (Cleanest):** `europe-north1` (giảm 92.1% lượng phát thải CO2).
+
+- **Vùng giá điện rẻ nhất (Cheapest):** `us-east-wa` (giảm 54.2% hóa đơn tiền điện).
+
+- **Phân tích Đánh đổi:** Các tác vụ Batch Training chạy phi thời gian thực không bị ảnh hưởng bởi độ trễ mạng đối với người dùng cuối, cho phép linh hoạt điều phối toàn cầu.
+
+_Số liệu được trích xuất theo snapshot tháng 6/2026; vui lòng re-baseline trước khi áp dụng thực tế._

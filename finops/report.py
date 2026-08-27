@@ -7,27 +7,27 @@ def build_report(
     optimized_usd: float,
     levers: dict,
     sustainability: dict | None = None,
-    period: str = "monthly",
+    period: str = "hàng tháng (monthly)",
     extra_sections: list[str] | None = None,
 ) -> str:
-    """Return a comprehensive markdown cost-optimization report."""
+    """Return a comprehensive Vietnamese markdown cost-optimization report."""
     savings = baseline_usd - optimized_usd
     pct = (savings / baseline_usd * 100.0) if baseline_usd > 0 else 0.0
     lines = [
-        "# NimbusAI — GPU Cost Optimization Report",
+        "# NimbusAI — Báo cáo Tối ưu hóa Chi phí GPU (GPU Cost Optimization Report)",
         "",
-        f"**Period:** {period}  ",
-        f"**Baseline spend:** ${baseline_usd:,.0f}  ",
-        f"**Optimized spend:** ${optimized_usd:,.0f}  ",
-        f"**Projected savings:** ${savings:,.0f}  (**{pct:.0f}%**)",
+        f"**Kỳ báo cáo (Period):** {period}  ",
+        f"**Chi phí cơ sở (Baseline spend):** ${baseline_usd:,.0f}  ",
+        f"**Chi phí sau tối ưu (Optimized spend):** ${optimized_usd:,.0f}  ",
+        f"**Dự kiến tiết kiệm (Projected savings):** ${savings:,.0f}  (**{pct:.0f}%**)",
         "",
-        "## Executive Summary",
+        "## 1. Tóm tắt Điều hành (Executive Summary)",
         "",
-        f"Through a comprehensive 5-phase FinOps audit across model inference, instance purchasing commitments, utilization efficiency, and idle capacity management, NimbusAI can reduce its monthly GPU spend from **${baseline_usd:,.0f}** to **${optimized_usd:,.0f}**, achieving **${savings:,.0f}/month in net savings ({pct:.1f}% reduction)**.",
+        f"Thông qua quá trình kiểm toán FinOps toàn diện 5 giai đoạn bao gồm tối ưu hóa suy luận (inference), cam kết mua sắm (purchasing), hiệu quả tính toán thực tế (MFU/MBU) và triệt tiêu lãng phí chạy không (idle waste), NimbusAI có thể cắt giảm chi phí GPU hàng tháng từ **${baseline_usd:,.0f}** xuống còn **${optimized_usd:,.0f}**, mang lại khoản tiết kiệm ròng **${savings:,.0f}/tháng (giảm {pct:.1f}%)**.",
         "",
-        "## Savings by lever",
+        "## 2. Tiết kiệm theo Đòn bẩy FinOps (Savings by lever)",
         "",
-        "| Lever | Savings (USD) | Share of Savings (%) |",
+        "| Đòn bẩy (Lever) | Tiết kiệm (USD) | Tỷ trọng tiết kiệm (%) |",
         "|---|---|---|",
     ]
     total_savings = sum(levers.values()) if levers else 1.0
@@ -37,48 +37,49 @@ def build_report(
 
     lines += [
         "",
-        "## Root-Cause Analysis: The 'GPU-Util Lie'",
+        "## 3. Phân tích Nguyên nhân Gốc rễ: Cú lừa GPU-Util (\"GPU-Util Lie\")",
         "",
-        "- **What is the Lie?** Telemetry metrics such as `nvidia-smi` GPU-Util measure the percentage of time that the GPU compute engines / SM clocks are non-idle. They do **not** measure computational throughput, arithmetic intensity, or tensor core utilization (MFU).",
-        "- **Why does it happen?** A GPU running memory-bound operations (e.g. LLM decode with small batch size) or waiting on memory bandwidth / kernel launch synchronization can show **98% GPU-Util** while its Model FLOPs Utilization (MFU) is merely **19-20%**.",
-        "- **Financial Impact:** The organization pays 100% of the premium hourly rate (e.g. $2.50/hr for H100) while obtaining only ~1/5th of the hardware's computational capacity. Right-sizing or disaggregating prefill/decode resolves this waste immediately.",
+        "- **Bản chất của \"Lie\":** Các chỉ số đo lường từ `nvidia-smi` như `GPU-Util %` chỉ đo tỷ lệ thời gian mà xung nhịp xử lý (SM clock) ở trạng thái bận (active), **hoàn toàn không phản ánh** thông lượng tính toán hữu ích, cường độ số học hay hiệu suất Tensor Core (MFU).",
+        "- **Nguyên nhân kỹ thuật:** Các tác vụ suy luận bị nghẽn băng thông bộ nhớ (Memory-bound autoregressive decoding với batch size nhỏ) hoặc chờ đợi nạp trọng số từ HBM sang SRAM khiến SM luôn trong trạng thái chờ (stall). Khi đó `GPU-Util` báo **98%** nhưng `MFU` thực tế chỉ đạt **19-20%**.",
+        "- **Tác động tài chính:** NimbusAI phải trả 100% đơn giá thuê GPU đắt đỏ ($2.50/giờ cho H100) nhưng chỉ nhận lại ~1/5 năng lực tính toán phần cứng. Việc right-sizing sang A100/A10G hoặc tách biệt prefill/decode sẽ loại bỏ ngay khoản lãng phí này.",
         "",
-        "## Prioritized Action Plan (Ranked by ROI)",
+        "## 4. Kế hoạch Hành động Ưu tiên theo ROI (Prioritized Action Plan)",
         "",
-        "1. **Phase 1 (Immediate — Day 1, Zero Risk): Kill Idle overnight GPUs & sandbox instances**",
-        "   - *Action:* Configure auto-reaper and event-driven scale-to-zero for development/eval instances.",
-        f"   - *Impact:* Saves ~${levers.get('Kill idle GPUs', 600):,.0f}/month with zero impact on production latency.",
-        "2. **Phase 2 (Fast ROI — Week 1): Inference Optimizations (Cascading, Prompt Caching, Batch API)**",
-        "   - *Action:* Route simple queries (80% volume) to small model tier ($0.20/$0.40 per 1M tokens), enable prompt caching for static system prompts (90% read discount), and offload asynchronous evaluation jobs to Batch API (-50% discount).",
-        f"   - *Impact:* Saves ~${levers.get('Inference (cascade/cache/batch)', 1212):,.0f}/month.",
-        "3. **Phase 3 (Strategic Purchasing — Week 2): Spot with Checkpointing & 3-Year Reserved Commitments**",
-        "   - *Action:* Move fault-tolerant batch training jobs to Spot instances with automated checkpointing; secure 3-Year Reserved instances for predictable 24/7 inference baselines.",
-        f"   - *Impact:* Largest dollar savings lever (~${levers.get('Purchasing (spot/reserved)', 10040):,.0f}/month).",
-        "4. **Phase 4 (Hardware Governance — Month 1): Right-Size Memory-Bound GPUs**",
-        "   - *Action:* Migrate memory-bound inference workloads from H100 down to A100 / A10G / L4 based on VRAM footprint and memory bandwidth.",
-        f"   - *Impact:* Saves ~${levers.get('Right-size util-lies', 655):,.0f}/month.",
+        "1. **Giai đoạn 1 (Ngay lập tức — Day 1, Không rủi ro): Hủy bỏ GPU chạy không qua đêm & sandbox**",
+        "   - *Hành động:* Cấu hình auto-reaper và cơ chế scale-to-zero tự động cho các instance thử nghiệm, eval và phát triển sau giờ làm việc.",
+        f"   - *Tác động:* Tiết kiệm ngay ~${levers.get('Kill idle GPUs', 600):,.0f}/tháng mà không ảnh hưởng tới người dùng.",
+        "2. **Giai đoạn 2 (Thu hồi vốn nhanh — Tuần 1): Tối ưu hóa Suy luận (Cascading, Prompt Caching, Batch API)**",
+        "   - *Hành động:* Định tuyến 80% truy vấn đơn giản sang model nhỏ ($0.20/$0.40 trên 1M token), kích hoạt Prompt Caching cho system prompt tĩnh (chiết khấu 90% khi đọc) và gom lô batch cho các tác vụ eval (-50% giá).",
+        f"   - *Tác động:* Tiết kiệm ~${levers.get('Inference (cascade/cache/batch)', 1212):,.0f}/tháng.",
+        "3. **Giai đoạn 3 (Mua sắm Chiến lược — Tuần 2): Kết hợp Spot + Checkpointing và Cam kết Reserved 3-Năm**",
+        "   - *Hành động:* Chuyển các job training chịu lỗi sang Spot instances kèm checkpoint định kỳ; ký cam kết Reserved 3-Year cho cụm phục vụ inference 24/7.",
+        f"   - *Tác động:* Đòn bẩy tiết kiệm lớn nhất (~${levers.get('Purchasing (spot/reserved)', 10040):,.0f}/tháng).",
+        "4. **Giai đoạn 4 (Chuẩn hóa Phần cứng — Tháng 1): Right-Size GPU theo VRAM & Băng thông MBU**",
+        "   - *Hành động:* Di chuyển các workload suy luận memory-bound từ H100 xuống A100 / A10G / L4 phù hợp với dung lượng VRAM thực tế.",
+        f"   - *Tác động:* Tiết kiệm ~${levers.get('Right-size util-lies', 655):,.0f}/tháng.",
     ]
 
     if sustainability:
         lines += [
             "",
-            "## Sustainability",
+            "## 5. Tính Bền vững & Năng lượng (Sustainability)",
             "",
-            f"- Energy per query: {sustainability.get('wh_per_query', 0):.2f} Wh",
-            f"- Carbon per query: {sustainability.get('carbon_g', 0):.3f} gCO2e",
-            f"- Cheapest+cleanest region: {sustainability.get('best_region', 'n/a')}",
+            f"- **Năng lượng tiêu thụ mỗi truy vấn (Energy per query):** {sustainability.get('wh_per_query', 0):.2f} Wh",
+            f"- **Phát thải carbon mỗi truy vấn (Carbon per query):** {sustainability.get('carbon_g', 0):.3f} gCO2e",
+            f"- **Vùng rẻ nhất & sạch nhất (Cheapest+cleanest region):** {sustainability.get('best_region', 'n/a')}",
             "",
-            "### Carbon & Regional Scheduling Insights",
-            "- **Region Optimization:** Deploying non-urgent batch training jobs in `europe-north1` (Norway hydro, 30 gCO2/kWh) reduces emissions by **92.1%** compared to `us-east-1` (380 gCO2/kWh) while saving on electricity costs.",
-            "- **Reasoning Energy Penalty:** Autoregressive reasoning expansion increases per-query energy consumption by up to **80×**. Implementing complexity-gated dynamic routing prevents unnecessary carbon and dollar expenditure.",
+            "### Đánh giá Phát thải Carbon & Điều phối Đa vùng",
+            "- **Tối ưu hóa Vùng triển khai:** Di chuyển các tác vụ huấn luyện theo lô sang `europe-north1` (Thủy điện Na Uy, 30 gCO2/kWh) giúp giảm **92.1% lượng phát thải carbon** so với `us-east-1` (380 gCO2/kWh) đồng thời giảm chi phí điện.",
+            "- **Chi phí Năng lượng của Reasoning:** Quá trình sinh token suy luận chuỗi dài tự hồi quy làm tăng mức tiêu thụ điện năng lên tới **80×**. Cần áp dụng Dynamic Routing để hạn chế lãng phí năng lượng không cần thiết.",
         ]
 
     if extra_sections:
         for sec in extra_sections:
             lines += ["", sec]
 
-    lines += ["", "_Figures are June-2026 as-of snapshots; re-baseline before acting._"]
+    lines += ["", "_Số liệu được trích xuất theo snapshot tháng 6/2026; vui lòng re-baseline trước khi áp dụng thực tế._"]
     return "\n".join(lines)
+
 
 
 def savings_waterfall(levers: dict, path: str) -> str:
