@@ -2,7 +2,7 @@
 ## NimbusAI Cost Optimization & Efficiency Engineering (100/100 Điểm)
 
 > **Tác giả:** Nguyễn Đình Bình  
-> **Khóa học:** AICB · Phase 2 · Track 2 (Infrastructure) · Day 25  
+> **Khóa học:** Cohort 3 · Track 2 (Infrastructure) · Day 25  
 > **Dự án:** NimbusAI GPU FinOps Strategy & Optimization Report  
 > **Đầu ra:** `outputs/report.md`, `outputs/savings.png`, `outputs/focus_export.csv`, `WRITEUP.md`
 
