@@ -61,3 +61,64 @@ def flag_util_lies(rows, util_threshold: float = 0.90, mfu_threshold: float = 0.
 def idle_waste_usd(idle_hours: float, on_demand_hr: float) -> float:
     """Dollars burned by a GPU left running idle (training done, instance up)."""
     return max(0.0, idle_hours) * max(0.0, on_demand_hr)
+
+
+# ---- Extension 2: Right-Sizing by MBU & VRAM Economics ----
+def vram_cost_per_gb_hr(on_demand_hr: float, hbm_gb: float) -> float:
+    """Cost per GB of VRAM per hour ($/GB-hr)."""
+    return on_demand_hr / hbm_gb if hbm_gb > 0 else 0.0
+
+
+def bw_cost_per_tbs_hr(on_demand_hr: float, peak_bw_tbs: float) -> float:
+    """Cost per TB/s of memory bandwidth per hour ($/(TB/s)-hr)."""
+    return on_demand_hr / peak_bw_tbs if peak_bw_tbs > 0 else 0.0
+
+
+def recommend_rightsizing(
+    current_gpu: str,
+    achieved_bw_tbs: float,
+    achieved_tflops: float,
+    vram_used_gb: float,
+    catalog: dict,
+) -> dict:
+    """Find the most cost-effective GPU that satisfies the memory, BW, and compute requirements.
+
+    Key insight: Memory-bound decode workloads don't need expensive compute FLOPS;
+    they only need sufficient HBM bandwidth and VRAM capacity.
+    """
+    cur_info = catalog.get(current_gpu)
+    if not cur_info:
+        return {"current_gpu": current_gpu, "recommended_gpu": current_gpu, "savings_pct": 0.0}
+
+    cur_price = float(cur_info["on_demand_hr"])
+    best_candidate = current_gpu
+    best_price = cur_price
+    rationale = "Current GPU is already right-sized."
+
+    # Look for cheaper GPUs in catalog that meet capacity and bandwidth with safety margin (20%)
+    for gtype, info in catalog.items():
+        price = float(info["on_demand_hr"])
+        hbm = float(info["hbm_gb"])
+        bw = float(info["peak_bw_tbs"])
+        fp16 = float(info["peak_tflops_fp16"])
+
+        # Check if candidate GPU satisfies workload constraints
+        if price < best_price:
+            if hbm >= vram_used_gb * 1.1 and bw >= achieved_bw_tbs * 1.1 and fp16 >= achieved_tflops:
+                best_candidate = gtype
+                best_price = price
+                rationale = (
+                    f"Workload needs {vram_used_gb:.1f}GB VRAM & {achieved_bw_tbs:.2f} TB/s BW. "
+                    f"{gtype} provides {hbm:.0f}GB & {bw:.2f} TB/s for ${price:.2f}/hr (vs ${cur_price:.2f}/hr)."
+                )
+
+    savings_pct = (1.0 - best_price / cur_price) * 100.0 if cur_price > 0 else 0.0
+    return {
+        "current_gpu": current_gpu,
+        "recommended_gpu": best_candidate,
+        "current_price_hr": cur_price,
+        "recommended_price_hr": best_price,
+        "savings_pct": round(savings_pct, 1),
+        "rationale": rationale,
+    }
+
